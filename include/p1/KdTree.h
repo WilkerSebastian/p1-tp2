@@ -5,6 +5,8 @@
 #include "Utils.h"
 #include <functional>
 #include <utility>
+#include <algorithm>
+#include <numeric>
 
 namespace tcii::p1
 { // begin namespace tcii::p1
@@ -26,6 +28,11 @@ public:
   auto& points() const
   {
     return _points;
+  }
+
+  auto& points() 
+  { 
+    return _points; 
   }
 
 private:
@@ -146,6 +153,12 @@ private:
 
   }; // Node
 
+  std::vector<unsigned int> _point_indices; 
+
+  Node* buildRecursive(Bounds currentBounds, unsigned depth,
+  unsigned firstIdx, unsigned numPtsInNode,
+  int initial_axis);
+
   Node* _root{};
   unsigned _nodeCount{};
   unsigned _leafCount{};
@@ -160,9 +173,104 @@ KdTree<D, R, A>::KdTree(A&& points, const Params& params):
   _nodeCount{0},
   _leafCount{0}
 {
-  _root = new Node{computeBounds<D, R>(this->points()), 0};
-  _nodeCount = _leafCount = 1;
-  // TODO
+
+  if (this->points().size() == 0)
+    return;
+
+  Bounds rootBounds = computeBounds<D, R>(this->points());
+
+  int initialAxis = 0; 
+
+  if constexpr (D > 0) { 
+
+    R maxSpan = R{-1}; 
+
+    for (size_t i = 0; i < D; ++i) {
+
+      R span = rootBounds.max()[i] - rootBounds.min()[i];
+
+      if (span > maxSpan) {
+
+        maxSpan = span;
+        initialAxis = static_cast<int>(i);
+
+      }
+
+    }
+
+  }
+
+  if (this->points().size() != 0) { 
+    _point_indices.resize(this->points().size());
+    std::iota(_point_indices.begin(), _point_indices.end(), 0);
+  }
+
+  if (!_point_indices.empty()) 
+    _root = buildRecursive(rootBounds, 0, 0, _point_indices.size(), initialAxis);
+
+}
+
+template <size_t D, typename R, typename A>
+typename KdTree<D, R, A>::Node*
+KdTree<D, R, A>::buildRecursive(Bounds currentBounds, unsigned depth,
+  unsigned firstIdx, unsigned numPtsInNode,
+  int initial_axis)
+{
+  
+  Node* node = new Node(currentBounds, depth);
+  _nodeCount++;
+
+  if (numPtsInNode == 0) { 
+    node->firstPointIndex = firstIdx; 
+    node->numPoints = 0;
+    _leafCount++;
+    return node; 
+  }
+
+  if (numPtsInNode <= params.maxPointsPerNode || depth >= params.maxDepth) {
+    node->firstPointIndex = firstIdx;
+    node->numPoints = numPtsInNode;
+    _leafCount++;
+    return node;
+  }
+
+  node->splitAxis = (initial_axis + depth) % D;
+
+  unsigned m_count = (numPtsInNode + 1) / 2;
+  unsigned median_offset = m_count - 1;      
+  unsigned medianAbsoluteIndex = firstIdx + median_offset;
+
+  std::nth_element(
+    _point_indices.begin() + firstIdx,
+    _point_indices.begin() + medianAbsoluteIndex, 
+    _point_indices.begin() + firstIdx + numPtsInNode,
+    [&](unsigned int index1, unsigned int index2) { 
+      return this->points()[index1][node->splitAxis] < this->points()[index2][node->splitAxis];
+    }
+  );
+
+  unsigned int actualMedianPointOriginalIndex = _point_indices[medianAbsoluteIndex];
+  node->splitValue = this->points()[actualMedianPointOriginalIndex][node->splitAxis];
+
+  Bounds leftChildBounds = currentBounds;
+  leftChildBounds.max()[node->splitAxis] = node->splitValue;
+
+  Bounds rightChildBounds = currentBounds;
+  rightChildBounds.min()[node->splitAxis] = node->splitValue;
+
+  node->children[0] = buildRecursive(leftChildBounds, 
+                                      depth + 1,
+                                      firstIdx, m_count,
+                                      initial_axis);
+
+  node->children[1] = buildRecursive(rightChildBounds, 
+                                      depth + 1,
+                                      firstIdx + m_count, 
+                                      numPtsInNode - m_count,
+                                      initial_axis);
+
+  return node;
+
 }
 
 template <size_t D, typename R, typename A>

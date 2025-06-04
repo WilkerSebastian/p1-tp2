@@ -35,6 +35,16 @@ public:
     return _p2;
   }
 
+  auto& min() 
+  { 
+    return _p1; 
+  }
+
+  auto& max() 
+  { 
+    return _p2; 
+  }
+
   bool contains(const vec3& p) const
   {
     if (p.x < _p1.x || p.x > _p2.x)
