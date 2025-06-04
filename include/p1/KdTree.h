@@ -119,11 +119,29 @@ private:
   struct Node
   {
     Bounds bounds;
+    unsigned depth;
+    Node* children[2]; 
+    int splitAxis;
+    R splitValue;
+    unsigned firstPointIndex;
+    unsigned numPoints;
 
-    Node(const Bounds& bounds, unsigned depth):
-      bounds{bounds}
+    Node(const Bounds& bounds, unsigned depth): 
+      bounds(bounds), depth(depth), splitAxis(-1), firstPointIndex(0), numPoints(0)
     {
-      // TODO
+      children[0] = nullptr;
+      children[1] = nullptr;
+    }
+
+    ~Node()
+    {
+      delete children[0]; 
+      delete children[1]; 
+    }
+
+    bool isLeaf() const
+    {
+      return children[0] == nullptr;
     }
 
   }; // Node
@@ -137,7 +155,10 @@ private:
 template <size_t D, typename R, typename A>
 KdTree<D, R, A>::KdTree(A&& points, const Params& params):
   Base{std::move(points)},
-  params{params}
+  params{params},
+  _root{nullptr},
+  _nodeCount{0},
+  _leafCount{0}
 {
   _root = new Node{computeBounds<D, R>(this->points()), 0};
   _nodeCount = _leafCount = 1;
