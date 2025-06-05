@@ -153,6 +153,19 @@ private:
 
   }; // Node
 
+  void findNeighborsRecursive(const Node* node, 
+                              const Point& queryPoint, 
+                              p1::KNN<R>& knn_results, 
+                              PointFunc filter) const;
+
+  void forEachNeighborRecursive(const Node* node, 
+                                const Point& queryPoint, 
+                                R radius, 
+                                R radius_sq,
+                                PointFunc func_to_call, 
+                                PointFunc filter, 
+                                bool& continue_search) const;
+
   std::vector<unsigned int> _point_indices; 
 
   Node* buildRecursive(Bounds currentBounds, unsigned depth,
@@ -281,8 +294,14 @@ KdTree<D, R, A>::findNeighbors(const Point& point,
 {
   KNN knn{k};
 
-  // TODO
-  return knn;
+  p1::KNN<R> knn_results(k);
+  
+  if (_root == nullptr || k == 0) 
+    return knn_results; 
+  
+  findNeighborsRecursive(_root, point, knn_results, filter);
+  return knn_results;
+
 }
 
 template <size_t D, typename R, typename A>
@@ -292,8 +311,155 @@ KdTree<D, R, A>::forEachNeighbor(const Point& point,
   PointFunc f,
   PointFunc filter) const
 {
-  f(this->points(), 0);
-  // TODO
+  
+  if (_root == nullptr || radius < 0) 
+    return;
+    
+  bool continue_search = true;
+  R radius_sq = radius * radius; 
+
+  forEachNeighborRecursive(_root, point, radius, radius_sq, f, filter, continue_search);
+
+}
+
+template <size_t D, typename R, typename A>
+void KdTree<D, R, A>::findNeighborsRecursive(const Node* node, 
+                                             const Point& queryPoint,
+                                             p1::KNN<R>& knn_results, 
+                                             PointFunc filter) const
+{
+
+  if (node == nullptr) 
+    return;
+  
+
+  if (node->isLeaf()) {
+
+    for (unsigned i = 0; i < node->numPoints; ++i) {
+
+      unsigned int original_point_idx = _point_indices[node->firstPointIndex + i];
+      
+      if (filter && !filter(this->points(), original_point_idx)) 
+        continue; 
+      
+
+      const Point& current_point = this->points()[original_point_idx];
+      R dist_sq = R{0};
+      
+      for(size_t dim = 0; dim < D; ++dim) {
+
+        R diff = queryPoint[dim] - current_point[dim];
+        dist_sq += diff * diff;
+
+      }
+
+      knn_results.add(std::sqrt(dist_sq), original_point_idx);
+
+    }
+
+    return;
+
+  }
+
+  int axis = node->splitAxis;
+  R median_val = node->splitValue;
+  const Node* closer_child;
+  const Node* farther_child;
+
+  if (queryPoint[axis] < median_val) 
+  {
+    closer_child = node->children[0];
+    farther_child = node->children[1]; 
+  } 
+  else 
+  {
+    closer_child = node->children[1];
+    farther_child = node->children[0]; 
+  }
+
+  findNeighborsRecursive(closer_child, queryPoint, knn_results, filter);
+
+  R current_worst_dist = knn_results.getWorstDistance();
+  
+  if (farther_child != nullptr) { 
+    
+    R dist_to_far_bounds = distance(queryPoint, farther_child->bounds);
+
+    if (dist_to_far_bounds < current_worst_dist) 
+      findNeighborsRecursive(farther_child, queryPoint, knn_results, filter);
+
+  }
+
+}
+
+template <size_t D, typename R, typename A>
+void KdTree<D, R, A>::forEachNeighborRecursive(const Node* node, 
+                                                const Point& queryPoint, 
+                                                R radius, 
+                                                R radius_sq,
+                                                PointFunc func_to_call, 
+                                                PointFunc filter, 
+                                                bool& continue_search) const
+{
+
+  if (node == nullptr || !continue_search) 
+    return;
+
+  if (distance(queryPoint, node->bounds) > radius)
+    return;
+
+  if (node->isLeaf()) {
+
+    for (unsigned i = 0; i < node->numPoints; i++) {
+
+      if (!continue_search) 
+        break; 
+
+      unsigned int original_point_idx = _point_indices[node->firstPointIndex + i];
+
+      if (filter && !filter(this->points(), original_point_idx)) 
+        continue;
+
+      const Point& current_point = this->points()[original_point_idx];
+      R dist_sq = R{0};
+
+      for(size_t dim = 0; dim < D; dim++) {
+        R diff = queryPoint[dim] - current_point[dim];
+        dist_sq += diff * diff;
+      }
+
+      if (dist_sq <= radius_sq) {
+
+        if (!func_to_call(this->points(), original_point_idx)) 
+          continue_search = false; 
+    
+      }
+
+    }
+
+    return;
+
+  }
+
+  forEachNeighborRecursive(node->children[0], 
+                            queryPoint, 
+                            radius, 
+                            radius_sq, 
+                            func_to_call, 
+                            filter, 
+                            continue_search);
+  
+  if (!continue_search) 
+    return; 
+  
+  forEachNeighborRecursive(node->children[1], 
+                            queryPoint, 
+                            radius, 
+                            radius_sq, 
+                            func_to_call, 
+                            filter, 
+                            continue_search);
+
 }
 
 template <typename R, typename A> using KdTree3 = KdTree<3, R, A>;
