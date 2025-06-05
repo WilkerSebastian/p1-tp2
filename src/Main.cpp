@@ -1,5 +1,5 @@
-#include "../include/p1/ParticleKdTree.h"
-#include "../include/p1/Utils.h"
+#include "p1/ParticleKdTree.h"
+#include "p1/Utils.h"
 #include <iostream>
 
 using namespace tcii::p1;
