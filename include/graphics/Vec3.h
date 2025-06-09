@@ -88,6 +88,13 @@ operator <<(std::ostream& os, const Vec3<T>& v)
   return os;
 }
 
+template <typename real>
+inline bool
+operator==(const Vec<3, real>& u, const Vec<3, real>& v) 
+{
+  return u.x == v.x && u.y == v.y && u.z == v.z;
+}
+
 using Vec3f = Vec3<float>;
 
 } // end namespace tcii::cg

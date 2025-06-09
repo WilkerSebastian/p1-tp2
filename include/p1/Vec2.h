@@ -93,6 +93,13 @@ operator<<(std::ostream& os, const Vec2<T>& v)
   return os;
 }
 
+template <typename real>
+inline bool
+operator==(const Vec<2, real>& u, const Vec<2, real>& v) 
+{
+  return u.x == v.x && u.y == v.y
+}
+
 using Vec2f = Vec2<float>;
 
 }
