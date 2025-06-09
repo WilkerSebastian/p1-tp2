@@ -1,3 +1,9 @@
+/*
+* Autor: Wilker Sebastian Afonso Pereira
+* GitHub: https://github.com/WilkerSebastian/p1-tp2
+*
+* Prova 1 de Tópicos em Computação 2
+*/
 #ifndef __DefaultSoAAllocator_h
 #define __DefaultSoAAllocator_h
 

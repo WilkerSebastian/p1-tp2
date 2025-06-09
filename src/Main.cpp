@@ -1,3 +1,9 @@
+/*
+* Autor: Wilker Sebastian Afonso Pereira
+* GitHub: https://github.com/WilkerSebastian/p1-tp2
+*
+* Prova 1 de Tópicos em Computação 2
+*/
 #include "p1/ParticleKdTree.h"
 #include "p1/Utils.h"
 #include "p1/Vec2.h"
