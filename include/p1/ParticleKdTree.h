@@ -32,6 +32,11 @@ public:
     return _particles->position(unsigned(i));
   }
 
+  const auto& getColor(size_t i) const
+  {
+    return _particles->getColor(unsigned(i));
+  }
+
 private:
   using PA = ParticleBuffer<Fields...>;
 

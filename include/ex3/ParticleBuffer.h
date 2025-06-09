@@ -52,6 +52,11 @@ public:
     return _data.template get<0>(i);
   }
 
+  const auto& getColor(unsigned i) const
+  {
+    return _data.template get<1>(i);
+  }
+
   Bounds3f bounds() const;
   void render(Renderer&) const;
 
