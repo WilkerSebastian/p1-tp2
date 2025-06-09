@@ -5,6 +5,7 @@
 #include "util/SharedObject.h"
 #include "util/SoA.h"
 #include "physx/Renderer.h"
+#include "p1/DefaultSoAAllocator.h"
 
 namespace tcii::physx
 { // begin namespace tcii::physx
@@ -17,6 +18,9 @@ template <typename... Fields>
 class ParticleBuffer: public SharedObject
 {
 public:
+
+  using ParticleSoA = cg::SoA<DefaultSoAAllocator, unsigned int, Vec3f, Fields...>;
+
   auto particleCount() const
   {
     return _particleCount;
@@ -24,35 +28,44 @@ public:
 
   auto capacity() const
   {
-    // TODO
-    return 0u;
+    return _capacity;
   }
 
   void add(const Vec3f& p, const Fields&... fields)
   {
-    // TODO
-    ++_particleCount;
+    
+    if (_particleCount < _capacity)
+    {
+      _data.set(_particleCount, p, fields...);
+      _particleCount++;
+    }
+
   }
 
   void clear()
   {
-    // TODO
+    _particleCount = 0;
   }
 
   auto& position(unsigned i) const
   {
-    // TODO
-    static Vec3f _dummy;
-    return _dummy;
+    return _data.template get<0>(i);
   }
 
   Bounds3f bounds() const;
   void render(Renderer&) const;
 
 private:
+
+  unsigned int _capacity{};
   unsigned _particleCount{};
 
-  ParticleBuffer(unsigned capacity)
+  ParticleSoA _data;
+
+  ParticleBuffer(unsigned capacity): 
+  _capacity(capacity),
+  _particleCount(0),
+  _data(capacity)
   {
     // TODO
   }
@@ -66,8 +79,13 @@ Bounds3f
 ParticleBuffer<Fields...>::bounds() const
 {
   Bounds3f b;
+  
+  if (_particleCount == 0)
+    return b; 
 
-  // TODO
+  for (unsigned i = 0; i < _particleCount; ++i)
+    b.inflate(position(i)); 
+  
   return b;
 }
 
